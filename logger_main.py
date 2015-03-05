@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # Load the libraries
 import serial # Serial communications
 import time # Timing utilities
@@ -23,29 +24,45 @@ settings_file = open("./settings.txt")
 # e.g. "/dev/ttyUSB0"
 port = settings_file.readline().rstrip('\n')
 # path for data files
-# e.g. "/home/logger/datacpc3775/"
+# e.g. "/home/logger/datacpc3010/"
 datapath = settings_file.readline().rstrip('\n')
 prev_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
 # psql connection string
-# e.g "user=datauser password=l3tme1n host=penap-data.dyndns.org dbname=didactic port=5432"
+# e.g "user=datauser password=l33t host=penap-data.dyndns.org dbname=didactic port=5432"
 db_conn = settings_file.readline().rstrip('\n')
 # ID values for the parameters and site (DATA, ERROR, SITE)
 # e.g. "408,409,2" == CPCdata,CPCerror,QueenStreet
 params = settings_file.readline().rstrip('\n').split(",")
+# SMPS operation settings
+# e.g. "SMPS,60" == mode,nbins
+smps_settings=settings_file.readline().rstrip('\n').split(",")
+is_smps = (smps_settings[0] == "SMPS")
+nbins = eval(smps_settings[1])
 # Close the settings file
 settings_file.close()
+# Setup the SMPS scan information
+# Logarithmic scale for the voltages
+# 3 seconds on each step ... nbins == 
+Vset = [0 for i in range(nbins*3)]
+for i in range(nbins):
+	print(i)
+	Vset[i*3] = 11**((i+1.0)/(nbins)) - 1
+	Vset[i*3+1]=Vset[i*3]
+	Vset[i*3+2]=Vset[i*3]
 # Hacks to work with custom end of line
 eol = b'\r'
 leneol = len(eol)
 bline = bytearray()
 # Open the serial port and clean the I/O buffer
-ser = serial.Serial(port,115200)
+ser = serial.Serial(port,9600,parity = serial.PARITY_EVEN,bytesize = serial.SEVENBITS)
 ser.flushInput()
 ser.flushOutput()
 # Start the logging
+dma_loop=0
+volt_command=''
 while True:
-	# Request a data line from the instrument
-	ser.write('rall\r')
+	# Request counts for the last second
+	ser.write('RB\r')
 	# Get the line of data from the instrument
 	while True:
 		c = ser.read(1)
@@ -54,19 +71,21 @@ while True:
 			break
 	# Parse the data line
 	line = bline.decode("utf-8")
+	if is_smps:
+		# Convert number voltage to text
+		volt_command = 'V' + str(int(1000*Vset[dma_loop%nbins])) + '\r'
+		# Send the command to the CPC
+		ser.write(volt_command)
+		dma_loop+=1
 	# Set the time for the record
 	rec_time_s = int(time.time())
 	rec_time=time.gmtime()
 	timestamp = time.strftime("%Y/%m/%d %H:%M:%S GMT",rec_time)
 	# SAMPLE LINE ONLY
-	# line = "3.15E+01,0000,39.0,14.0,40.0,33.0,98.8,54.9,0.054,31,FULL (2475)"
-	split_indx=line.find(',')
-	concentration = eval(line[:split_indx])
-	min_concentration += concentration
-	n_concentration += 1
-	error_message = line[split_indx+1:]
+	# line = '2500'
+	concentration = eval(line)
 	# Make the line pretty for the file
-	file_line = timestamp+','+line
+	file_line = timestamp+','+line+volt_command[1:]
 	# Save it to the appropriate file
 	current_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
 	current_file = open(current_file_name,"a")
@@ -75,31 +94,31 @@ while True:
 	current_file.close()
 	line = ""
 	bline = bytearray()
-	# Is it the top of the minute?
-	if rec_time[4] != prev_minute:
-		prev_minute = rec_time[4]
-		# YES! --> generate the psql statement
-		# Average for the minute with what we have
-		min_concentration = min_concentration / n_concentration
-		# Print the missing insert statements to a file
-		# to be processed by another programme
-		sql_buffer = open(datapath + "SQL/inserts.sql","a")
-		# Insert the DATA record
-		sql_buffer.write(insert_statement_file%
-		(params[0],min_concentration,params[2],timestamp))
-		# Insert the ERROR record
-		sql_buffer.write(insert_statement_file%
-		(params[0],line[split_indx+1:],params[2],timestamp))
-		sql_buffer.flush()
-		sql_buffer.close()
-	min_concentration = 0
-	n_concentration = 0
-	# Is it the last minute of the day?
-	if current_file_name != prev_file_name:
-		subprocess.call(["gzip",prev_file_name])
-		prev_file_name = current_file_name
-	# Wait until the next second
-	while int(time.time())<=rec_time_s:
-		#wait a few miliseconds
-		time.sleep(0.05)	
+	## Is it the top of the minute?
+	#if rec_time[4] != prev_minute:
+		#prev_minute = rec_time[4]
+		## YES! --> generate the psql statement
+		## Average for the minute with what we have
+		#min_concentration = min_concentration / n_concentration
+		## Print the missing insert statements to a file
+		## to be processed by another programme
+		#sql_buffer = open(datapath + "SQL/inserts.sql","a")
+		## Insert the DATA record
+		#sql_buffer.write(insert_statement_file%
+		#(params[0],min_concentration,params[2],timestamp))
+		## Insert the ERROR record
+		#sql_buffer.write(insert_statement_file%
+		#(params[0],line[split_indx+1:],params[2],timestamp))
+		#sql_buffer.flush()
+		#sql_buffer.close()
+	#min_concentration = 0
+	#n_concentration = 0
+	## Is it the last minute of the day?
+	#if current_file_name != prev_file_name:
+		#subprocess.call(["gzip",prev_file_name])
+		#prev_file_name = current_file_name
+	## Wait until the next second
+	#while int(time.time())<=rec_time_s:
+		##wait a few miliseconds
+		#time.sleep(0.05)	
 print('I\'m done')
