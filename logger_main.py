@@ -23,21 +23,28 @@ VALUES (%s,'%s',%s,timestamptz '%s');\n"""
 settings_file = open("./settings.txt")
 # e.g. "/dev/ttyUSB0"
 port = settings_file.readline().rstrip('\n')
+print(port)
 # path for data files
 # e.g. "/home/logger/datacpc3010/"
 datapath = settings_file.readline().rstrip('\n')
+print(datapath)
 prev_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
 # psql connection string
 # e.g "user=datauser password=l33t host=penap-data.dyndns.org dbname=didactic port=5432"
 db_conn = settings_file.readline().rstrip('\n')
+print(db_conn)
 # ID values for the parameters and site (DATA, ERROR, SITE)
 # e.g. "408,409,2" == CPCdata,CPCerror,QueenStreet
 params = settings_file.readline().rstrip('\n').split(",")
+print(params)
 # SMPS operation settings
 # e.g. "SMPS,60" == mode,nbins
 smps_settings=settings_file.readline().rstrip('\n').split(",")
+print(smps_settings)
 is_smps = (smps_settings[0] == "SMPS")
+print(is_smps)
 nbins = eval(smps_settings[1])
+print(nbins)
 # Close the settings file
 settings_file.close()
 # Setup the SMPS scan information
@@ -49,6 +56,8 @@ for i in range(nbins):
 	Vset[i*3] = 11**((i+1.0)/(nbins)) - 1
 	Vset[i*3+1]=Vset[i*3]
 	Vset[i*3+2]=Vset[i*3]
+Vset = Vset + list(reversed(Vset))
+print(Vset)
 # Hacks to work with custom end of line
 eol = b'\r'
 leneol = len(eol)
@@ -61,7 +70,7 @@ ser.flushOutput()
 dma_loop=0
 volt_command=''
 while True:
-	# Request counts for the last second
+	## Request counts for the last second
 	ser.write('RB\r')
 	# Get the line of data from the instrument
 	while True:
@@ -73,19 +82,22 @@ while True:
 	line = bline.decode("utf-8")
 	if is_smps:
 		# Convert number voltage to text
-		volt_command = 'V' + str(int(1000*Vset[dma_loop%nbins])) + '\r'
+		volt_command = 'V' + str(int(1000*Vset[dma_loop%(nbins*6)])) + '\r'
+		print(volt_command)
 		# Send the command to the CPC
-		ser.write(volt_command)
+		#ser.write(volt_command)
 		dma_loop+=1
 	# Set the time for the record
 	rec_time_s = int(time.time())
 	rec_time=time.gmtime()
 	timestamp = time.strftime("%Y/%m/%d %H:%M:%S GMT",rec_time)
 	# SAMPLE LINE ONLY
-	# line = '2500'
+	line = '2500\r'
+	line = line.rstrip()
 	concentration = eval(line)
 	# Make the line pretty for the file
-	file_line = timestamp+','+line+volt_command[1:]
+	file_line = timestamp+','+line+','+volt_command[1:-1]
+	print(file_line)
 	# Save it to the appropriate file
 	current_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
 	current_file = open(current_file_name,"a")
@@ -118,7 +130,7 @@ while True:
 		#subprocess.call(["gzip",prev_file_name])
 		#prev_file_name = current_file_name
 	## Wait until the next second
-	#while int(time.time())<=rec_time_s:
-		##wait a few miliseconds
-		#time.sleep(0.05)	
+	while int(time.time())<=rec_time_s:
+		#wait a few miliseconds
+		time.sleep(0.05)	
 print('I\'m done')
