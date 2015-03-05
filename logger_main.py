@@ -125,11 +125,11 @@ while True:
 		#sql_buffer.close()
 	#min_concentration = 0
 	#n_concentration = 0
-	## Is it the last minute of the day?
-	#if current_file_name != prev_file_name:
-		#subprocess.call(["gzip",prev_file_name])
-		#prev_file_name = current_file_name
-	## Wait until the next second
+	# Is it the last minute of the day?
+	if current_file_name != prev_file_name:
+		subprocess.call(["gzip",prev_file_name])
+		prev_file_name = current_file_name
+	# Wait until the next second
 	while int(time.time())<=rec_time_s:
 		#wait a few miliseconds
 		time.sleep(0.05)	
