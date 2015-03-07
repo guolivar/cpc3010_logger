@@ -78,11 +78,21 @@ while True:
 	line = bline.decode("utf-8")
 	if is_smps:
 		# Convert number voltage to text
-		volt_command = 'V' + str(int(1000*Vset[dma_loop%(nbins*6)])) + '\r'
+		volt_command = 'V' + str(int(1000*Vset[dma_loop])) + '\r'
 		print(volt_command)
 		# Send the command to the CPC
-		#ser.write(volt_command)
+		ser.write(volt_command)
+		# READ THE response from the CPC
+		dump_me = ser.read(1)
+		if dump_me = "O":
+			# Finish reading OK\r
+			dump_me = ser.read(2)
+		else:
+			# Finish reading ERROR\r
+			dump_me = ser.read(5)
+			volt_command = "NaN"
 		dma_loop+=1
+		dma_loop = dma_loop%(6*nbins)
 	# Set the time for the record
 	rec_time_s = int(time.time())
 	rec_time=time.gmtime()
