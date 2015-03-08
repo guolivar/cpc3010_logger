@@ -116,7 +116,7 @@ while True:
 		ser.write(volt_command)
 		# READ THE response from the CPC
 		dump_me = ser.read(1)
-		if dump_me = "O":
+		if dump_me == "O":
 			# Finish reading OK\r
 			dump_me = ser.read(2)
 		else:
