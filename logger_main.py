@@ -64,7 +64,22 @@ ser.flushInput()
 ser.flushOutput()
 # Start the logging
 dma_loop=0
-volt_command=''
+volt_command='NaN'
+if is_smps:
+	# Convert number voltage to text
+	volt_command = 'V000\r'
+	print(volt_command)
+	# Send the command to the CPC
+	ser.write(volt_command)
+	# READ THE response from the CPC
+	dump_me = ser.read(1)
+	if dump_me = "O":
+		# Finish reading OK\r
+		dump_me = ser.read(2)
+	else:
+		# Finish reading ERROR\r
+		dump_me = ser.read(5)
+		volt_command = "NaN"
 while True:
 	## Request counts for the last second
 	ser.write('RB\r')
@@ -76,6 +91,23 @@ while True:
 			break
 	# Parse the data line
 	line = bline.decode("utf-8")
+	# Set the time for the record
+	rec_time_s = int(time.time())
+	rec_time=time.gmtime()
+	timestamp = time.strftime("%Y/%m/%d %H:%M:%S GMT",rec_time)
+	# SAMPLE LINE ONLY
+	# line = '2500\r'
+	line = line.rstrip()
+	concentration = eval(line)
+	# Make the line pretty for the file
+	file_line = timestamp+','+line+','+volt_command[1:-1]
+	print(file_line)
+	# Save it to the appropriate file
+	current_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
+	current_file = open(current_file_name,"a")
+	current_file.write(file_line+"\n")
+	current_file.flush()
+	current_file.close()
 	if is_smps:
 		# Convert number voltage to text
 		volt_command = 'V' + str(int(1000*Vset[dma_loop])) + '\r'
@@ -93,23 +125,6 @@ while True:
 			volt_command = "NaN"
 		dma_loop+=1
 		dma_loop = dma_loop%(6*nbins)
-	# Set the time for the record
-	rec_time_s = int(time.time())
-	rec_time=time.gmtime()
-	timestamp = time.strftime("%Y/%m/%d %H:%M:%S GMT",rec_time)
-	# SAMPLE LINE ONLY
-	line = '2500\r'
-	line = line.rstrip()
-	concentration = eval(line)
-	# Make the line pretty for the file
-	file_line = timestamp+','+line+','+volt_command[1:-1]
-	print(file_line)
-	# Save it to the appropriate file
-	current_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
-	current_file = open(current_file_name,"a")
-	current_file.write(file_line+"\n")
-	current_file.flush()
-	current_file.close()
 	line = ""
 	bline = bytearray()
 	## Is it the top of the minute?
