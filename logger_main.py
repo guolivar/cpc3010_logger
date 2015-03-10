@@ -25,6 +25,7 @@ print(port)
 datapath = settings_file.readline().rstrip('\n')
 print(datapath)
 prev_file_name = datapath+time.strftime("%Y%m%d.txt",rec_time)
+flags = settings_file.readline().rstrip().split(',')
 # psql connection string
 # e.g "user=datauser password=l33t host=penap-data.dyndns.org dbname=didactic port=5432"
 db_conn = settings_file.readline().rstrip('\n')
@@ -99,6 +100,8 @@ while True:
 	# line = '2500\r'
 	line = line.rstrip()
 	concentration = eval(line)
+	min_concentration = min_concentration + concentration
+	n_concentration = n_concentration +1
 	# Make the line pretty for the file
 	file_line = timestamp+','+line+','+volt_command[1:-1]
 	print(file_line)
@@ -127,29 +130,33 @@ while True:
 		dma_loop = dma_loop%(6*nbins)
 	line = ""
 	bline = bytearray()
-	## Is it the top of the minute?
-	#if rec_time[4] != prev_minute:
-		#prev_minute = rec_time[4]
-		## YES! --> generate the psql statement
-		## Average for the minute with what we have
-		#min_concentration = min_concentration / n_concentration
-		## Print the missing insert statements to a file
-		## to be processed by another programme
-		#sql_buffer = open(datapath + "SQL/inserts.sql","a")
-		## Insert the DATA record
-		#sql_buffer.write(insert_statement_file%
-		#(params[0],min_concentration,params[2],timestamp))
-		## Insert the ERROR record
-		#sql_buffer.write(insert_statement_file%
-		#(params[0],line[split_indx+1:],params[2],timestamp))
-		#sql_buffer.flush()
-		#sql_buffer.close()
-	#min_concentration = 0
-	#n_concentration = 0
+	## Push data to the DB if required
+	if flags[0] == 'database':
+		# Is it the top of the minute?
+		if rec_time[4] != prev_minute:
+			prev_minute = rec_time[4]
+			# YES! --> generate the psql statement
+			# Average for the minute with what we have
+			min_concentration = min_concentration / n_concentration
+			# Print the missing insert statements to a file
+			# to be processed by another programme
+			sql_buffer = open(datapath + "SQL/inserts.sql","a")
+			# Insert the DATA record
+			sql_buffer.write(insert_statement_file%
+			(params[0],min_concentration,params[2],timestamp))
+			# Insert the ERROR record
+			sql_buffer.write(insert_statement_file%
+			(params[0],line[split_indx+1:],params[2],timestamp))
+			sql_buffer.flush()
+			sql_buffer.close()
+		min_concentration = 0
+		n_concentration = 0
+	## Compress data if required
 	# Is it the last minute of the day?
-	if current_file_name != prev_file_name:
-		subprocess.call(["gzip",prev_file_name])
-		prev_file_name = current_file_name
+	if flags[1] == 1:
+		if current_file_name != prev_file_name:
+			subprocess.call(["gzip",prev_file_name])
+			prev_file_name = current_file_name
 	# Wait until the next second
 	while int(time.time())<=rec_time_s:
 		#wait a few miliseconds
