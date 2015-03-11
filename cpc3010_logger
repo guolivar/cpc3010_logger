@@ -23,8 +23,10 @@ long_line_behaviour=1
 long_line_column=72
 
 [files]
-current_page=0
-FILE_NAME_0=4992;Python;0;EUTF-8;1;1;0;%2Fhome%2Fgustavo%2Frepositories%2Fcpc3010_logger%2Flogger_main.py;0;4
+current_page=2
+FILE_NAME_0=5254;Python;0;EUTF-8;1;1;0;%2Fhome%2Fgustavo%2Frepositories%2Fcpc3010_logger%2Flogger_main.py;0;4
+FILE_NAME_1=0;None;0;EUTF-8;1;1;0;%2Fhome%2Fgustavo%2Frepositories%2Fcpc3010_logger%2Fsettings.txt;0;4
+FILE_NAME_2=356;Markdown;0;EUTF-8;1;1;0;%2Fhome%2Fgustavo%2Frepositories%2Fcpc3010_logger%2FREADME.md;0;4
 
 [VTE]
 last_dir=/home/gustavo/repositories/cpc3010_logger
