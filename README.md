@@ -1,7 +1,7 @@
 # CPC3010 logger
 Python utility to read the output from a TSI CPC3010 and optionally control the voltage of a compatible differential mobility analizer (DMA) and upload data to a PostgreSQL database.
 
-The script requests the 1 second buffer from the CPC, timestamps it and saves it to a file. Optionally, it can send the control command to sweep the voltage on the DMA and upload the data to a database.
+The script requests the 1 second buffer from the CPC, timestamps it and saves it to a file. Optionally, it can send the control command to, stepwise, sweep the **full range** of voltage on the DMA in and upload the data to a database.
 
 ## Modules required
 * **pyserial**
@@ -23,9 +23,15 @@ SMPS,10
 3 <local/database selector>,<compress data? 1=='yes'>
 4 <DATABASE CONNECTION STRING>
 5 <DATABASE INSERT IDs>
+6 <"SMPS" means the SMPS is connected, number of size bins for scan>
 ```
+Remember that the number of bins refer to the full range of voltage on the SMPS. The scaling is logarithmic and the actual bins are reported in the data file.
+
 There are two scripts to run:
 * ```logger_mail.py```. This is the main logging script and the one that interacts directly with the CPC. It must be run manually and it will continue to run until stopped by ```^C```. The outputs from this script are one datafile named ```YYYYMMDD.txt``` with the 1 second data and a ```SQL/inserts.sql```with the SQL statements to update the database with the **1 minute average** data.
-* ```upload_batch_sql.py```. This is the database updater and it it recommended to be run as a cron job every 5 to 10 minutes
+* ```upload_batch_sql.py```. This is the **optional** database updater and it it recommended to be run as a cron job every 5 to 10 minutes
 
 For further details contact Gustavo Olivares
+
+## License
+MIT. See LICENSE.md for details.
